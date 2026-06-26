@@ -1,0 +1,2 @@
+[console_scripts]
+jetson-mcp = jetson_mcp.server:main

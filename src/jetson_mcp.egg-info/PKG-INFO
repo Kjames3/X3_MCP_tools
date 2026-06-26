@@ -1,3 +1,11 @@
+Metadata-Version: 2.4
+Name: jetson-mcp
+Version: 0.1.0
+Summary: MCP server for interacting with the Jetson robot.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: mcp
+
 # X3_MCP_tools
 
 This repository provides an MCP (Model Context Protocol) server for interacting with the Jetson robot. It contains tools specifically designed to make it easy for an AI assistant to sync code, diagnose services, view ROS 2 topics, and compile code on the Jetson.

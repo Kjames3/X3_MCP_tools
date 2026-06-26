@@ -1,0 +1,12 @@
+[project]
+name = "jetson-mcp"
+version = "0.1.0"
+description = "MCP server for interacting with the Jetson robot."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp",
+]
+
+[project.scripts]
+jetson-mcp = "jetson_mcp.server:main"
