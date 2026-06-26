@@ -28,7 +28,7 @@ pip install -e .
 You can add this MCP server to Antigravity IDE by configuring it in your `mcp.json` or through the UI as a standard stdio server:
 
 **Command**: `uvx`
-**Args**: `["--from", "/home/kamren/X3_MCP_tools", "jetson-mcp"]`
+**Args**: ["--from", ".", "jetson-mcp"]
 
 Alternatively, using the python environment where it is installed:
 **Command**: `python`
@@ -39,5 +39,5 @@ Alternatively, using the python environment where it is installed:
 To add this server to Claude Code, you can use the `mcp add` command:
 
 ```bash
-claude mcp add jetson-mcp uvx --from /home/kamren/X3_MCP_tools jetson-mcp
+claude mcp add jetson-mcp uvx --from . jetson-mcp
 ```

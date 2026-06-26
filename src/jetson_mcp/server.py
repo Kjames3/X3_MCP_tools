@@ -1,3 +1,4 @@
+import shlex
 import subprocess
 from mcp.server.fastmcp import FastMCP
 
@@ -5,16 +6,15 @@ mcp = FastMCP("jetson-mcp")
 
 def run_ssh_command(ip: str, command: str) -> str:
     """Helper to run a command over SSH on the Jetson robot."""
+    remote_command = f"bash -lc {shlex.quote(command)}"
     ssh_cmd = [
         "ssh",
         "-o",
         "StrictHostKeyChecking=no",
         f"jetson@{ip}",
-        "bash",
-        "-lc",
-        command,
+        remote_command,
     ]
-    result = subprocess.run(ssh_cmd, capture_output=True, text=True)
+    result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
     if result.returncode != 0:
         return f"Error executing command: {result.stderr}\nOutput: {result.stdout}"
     return result.stdout
@@ -43,9 +43,10 @@ def check_connection(ip: str) -> str:
 @mcp.tool()
 def check_disk_usage(ip: str, path: str = "/") -> str:
     """Inspect disk usage for the remote robot path."""
+    quoted_path = shlex.quote(path)
     command = (
-        f"df -h {path} && echo '---' && "
-        f"if [ -e {path} ] && [ -d {path} ]; then du -sh {path}; fi"
+        f"df -h {quoted_path} && echo '---' && "
+        f"if [ -e {quoted_path} ] && [ -d {quoted_path} ]; then du -sh {quoted_path}; fi"
     )
     return run_ssh_command(ip, command)
 
@@ -99,7 +100,7 @@ def check_ros_status(ip: str) -> str:
 def check_ros_logs(ip: str, package: str = "") -> str:
     """Inspect ROS-related logs or journal output on the robot."""
     if package:
-        command = f"journalctl -u {package} -n 50 --no-pager"
+        command = f"journalctl -u {shlex.quote(package)} -n 50 --no-pager"
     else:
         command = "journalctl -n 50 --no-pager"
     return run_ssh_command(ip, command)
@@ -108,7 +109,7 @@ def check_ros_logs(ip: str, package: str = "") -> str:
 @mcp.tool()
 def check_service_status(ip: str, service: str) -> str:
     """Check systemd service status for a robot service."""
-    command = f"systemctl status {service} --no-pager"
+    command = f"systemctl status {shlex.quote(service)} --no-pager"
     return run_ssh_command(ip, command)
 
 
@@ -163,25 +164,27 @@ def sync_code(ip: str, local_path: str, remote_path: str) -> str:
 @mcp.tool()
 def view_ros_topic(ip: str, topic_name: str) -> str:
     """View data from a ROS 2 topic directly on the robot."""
-    command = f"{ros_setup_command()}ros2 topic echo {topic_name} --once"
+    command = f"{ros_setup_command()}ros2 topic echo {shlex.quote(topic_name)} --once"
     return run_ssh_command(ip, command)
 
 
 @mcp.tool()
 def diagnose_errors(ip: str, target: str, is_service: bool = True) -> str:
     """Diagnose errors from a service or a script log on the robot. target is service name or log path."""
+    quoted_target = shlex.quote(target)
     if is_service:
-        command = f"journalctl -u {target} -n 50 --no-pager"
+        command = f"journalctl -u {quoted_target} -n 50 --no-pager"
     else:
-        command = f"tail -n 50 {target}"
+        command = f"tail -n 50 {quoted_target}"
     return run_ssh_command(ip, command)
 
 
 @mcp.tool()
 def colcon_build(ip: str, workspace_path: str, packages: str = "") -> str:
     """Run colcon build on the robot."""
-    pkg_arg = f"--packages-select {packages}" if packages else ""
-    command = f"{ros_setup_command()}cd {workspace_path} && colcon build {pkg_arg}"
+    quoted_workspace = shlex.quote(workspace_path)
+    pkg_arg = f"--packages-select {shlex.quote(packages)}" if packages else ""
+    command = f"{ros_setup_command()}cd {quoted_workspace} && colcon build {pkg_arg}"
     return run_ssh_command(ip, command)
 
 
