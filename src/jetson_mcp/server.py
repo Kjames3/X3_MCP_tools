@@ -14,7 +14,11 @@ def run_ssh_command(ip: str, command: str) -> str:
         f"jetson@{ip}",
         remote_command,
     ]
-    result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
+    try:
+        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired as exc:
+        return f"Error executing command: command timed out after 30 seconds\nOutput: {exc.stdout or ''}\nError: {exc.stderr or ''}"
+
     if result.returncode != 0:
         return f"Error executing command: {result.stderr}\nOutput: {result.stdout}"
     return result.stdout
@@ -183,7 +187,8 @@ def diagnose_errors(ip: str, target: str, is_service: bool = True) -> str:
 def colcon_build(ip: str, workspace_path: str, packages: str = "") -> str:
     """Run colcon build on the robot."""
     quoted_workspace = shlex.quote(workspace_path)
-    pkg_arg = f"--packages-select {shlex.quote(packages)}" if packages else ""
+    package_list = [shlex.quote(package) for package in packages.split()] if packages else []
+    pkg_arg = f"--packages-select {' '.join(package_list)}" if package_list else ""
     command = f"{ros_setup_command()}cd {quoted_workspace} && colcon build {pkg_arg}"
     return run_ssh_command(ip, command)
 
