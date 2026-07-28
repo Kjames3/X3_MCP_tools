@@ -118,6 +118,65 @@ def check_service_status(ip: str, service: str) -> str:
 
 
 @mcp.tool()
+def list_services(ip: str, state: str = "active") -> str:
+    """List systemd services by state on the robot."""
+    normalized_state = state.lower()
+    if normalized_state not in {"active", "failed", "all"}:
+        return "Invalid state. Use 'active', 'failed', or 'all'."
+
+    command = (
+        "systemctl list-units --type=service --all"
+        if normalized_state == "all"
+        else f"systemctl list-units --type=service --state={normalized_state}"
+    )
+    return run_ssh_command(ip, command)
+
+
+@mcp.tool()
+def manage_service(ip: str, service: str, action: str) -> str:
+    """Restart, stop, start, enable, disable, or query status for a systemd service."""
+    normalized_action = action.lower()
+    valid_actions = {"start", "stop", "restart", "enable", "disable", "status"}
+    if normalized_action not in valid_actions:
+        return "Invalid action. Use start, stop, restart, enable, disable, or status."
+
+    command = f"systemctl {normalized_action} {shlex.quote(service)}"
+    return run_ssh_command(ip, command)
+
+
+@mcp.tool()
+def check_ros_node(ip: str, node_name: str = "") -> str:
+    """Show ROS 2 node status and related runtime errors."""
+    prefix = ros_setup_command()
+    if not node_name:
+        return run_ssh_command(ip, f"{prefix}ros2 node list")
+
+    quoted_node = shlex.quote(node_name)
+    command = (
+        f"{prefix}ros2 node info {quoted_node} && echo '---' && "
+        f"journalctl -n 200 --no-pager | grep -i {quoted_node} | grep -Ei 'error|warn|exception|fatal' | tail -n 50"
+    )
+    return run_ssh_command(ip, command)
+
+
+@mcp.tool()
+def check_rosbag_info(ip: str, bag_path: str) -> str:
+    """Show ROS 2 bag information for a recorded bag file."""
+    command = f"{ros_setup_command()}ros2 bag info {shlex.quote(bag_path)}"
+    return run_ssh_command(ip, command)
+
+
+@mcp.tool()
+def check_rosbag_topics(ip: str, bag_path: str) -> str:
+    """List topics contained in a ROS 2 bag file."""
+    command = (
+        f"{ros_setup_command()}ros2 bag info {shlex.quote(bag_path)} "
+        "| sed -n '/^topics:/,$p'"
+    )
+    return run_ssh_command(ip, command)
+
+
+@mcp.tool()
 def check_network(ip: str) -> str:
     """Inspect remote network interfaces, routes, and DNS configuration."""
     command = (
