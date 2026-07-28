@@ -171,7 +171,7 @@ def check_rosbag_topics(ip: str, bag_path: str) -> str:
     """List topics contained in a ROS 2 bag file."""
     command = (
         f"{ros_setup_command()}ros2 bag info {shlex.quote(bag_path)} "
-        "| sed -n '/^topics:/,$p'"
+        "| sed -n '/^Topic information:/,$p'"
     )
     return run_ssh_command(ip, command)
 

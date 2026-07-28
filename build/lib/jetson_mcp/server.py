@@ -6,7 +6,8 @@ mcp = FastMCP("jetson-mcp")
 
 def run_ssh_command(ip: str, command: str) -> str:
     """Helper to run a command over SSH on the Jetson robot."""
-    ssh_cmd = ["ssh", "-o", "StrictHostKeyChecking=no", f"jetson@{ip}", f"bash -c '{command}'"]
+    remote_command = f"bash -lc {shlex.quote(command)}"
+    ssh_cmd = ["ssh", "-o", "StrictHostKeyChecking=no", f"jetson@{ip}", remote_command]
     result = subprocess.run(ssh_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         return f"Error executing command: {result.stderr}\nOutput: {result.stdout}"
@@ -79,7 +80,7 @@ def check_rosbag_topics(ip: str, bag_path: str) -> str:
     """List topics contained in a ROS 2 bag file."""
     command = (
         f"{ros_setup_command()}ros2 bag info {shlex.quote(bag_path)} "
-        "| sed -n '/^topics:/,$p'"
+        "| sed -n '/^Topic information:/,$p'"
     )
     return run_ssh_command(ip, command)
 
