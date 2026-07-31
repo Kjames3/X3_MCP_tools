@@ -2,9 +2,11 @@ import shlex
 import subprocess
 from mcp.server.fastmcp import FastMCP
 
+from token_budget import clip_output
+
 mcp = FastMCP("jetson-mcp")
 
-def run_ssh_command(ip: str, command: str) -> str:
+def run_ssh_command(ip: str, command: str, max_tokens: int = 2000, label: str = "ssh output") -> str:
     """Helper to run a command over SSH on the Jetson robot."""
     remote_command = f"bash -lc {shlex.quote(command)}"
     ssh_cmd = [
@@ -17,11 +19,19 @@ def run_ssh_command(ip: str, command: str) -> str:
     try:
         result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
     except subprocess.TimeoutExpired as exc:
-        return f"Error executing command: command timed out after 30 seconds\nOutput: {exc.stdout or ''}\nError: {exc.stderr or ''}"
+        return clip_output(
+            f"Error executing command: command timed out after 30 seconds\nOutput: {exc.stdout or ''}\nError: {exc.stderr or ''}",
+            max_tokens=max_tokens,
+            label=label,
+        )
 
     if result.returncode != 0:
-        return f"Error executing command: {result.stderr}\nOutput: {result.stdout}"
-    return result.stdout
+        return clip_output(
+            f"Error executing command: {result.stderr}\nOutput: {result.stdout}",
+            max_tokens=max_tokens,
+            label=label,
+        )
+    return clip_output(result.stdout, max_tokens=max_tokens, label=label)
 
 
 def ros_setup_command() -> str:
@@ -97,7 +107,7 @@ def check_ros_status(ip: str) -> str:
         f"{prefix}ros2 topic list && echo '---' && "
         f"{prefix}ros2 service list"
     )
-    return run_ssh_command(ip, command)
+    return run_ssh_command(ip, command, max_tokens=3000, label="check_ros_status")
 
 
 @mcp.tool()
@@ -129,7 +139,7 @@ def list_services(ip: str, state: str = "active") -> str:
         if normalized_state == "all"
         else f"systemctl list-units --type=service --state={normalized_state}"
     )
-    return run_ssh_command(ip, command)
+    return run_ssh_command(ip, command, max_tokens=3000, label="list_services")
 
 
 @mcp.tool()
@@ -182,7 +192,7 @@ def check_network(ip: str) -> str:
     command = (
         "ip a && echo '---' && ip route && echo '---' && cat /etc/resolv.conf"
     )
-    return run_ssh_command(ip, command)
+    return run_ssh_command(ip, command, max_tokens=2500, label="check_network")
 
 
 @mcp.tool()
@@ -220,8 +230,12 @@ def sync_code(ip: str, local_path: str, remote_path: str) -> str:
     ]
     result = subprocess.run(rsync_cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        return f"Sync failed: {result.stderr}\nOutput: {result.stdout}"
-    return f"Sync successful:\n{result.stdout}"
+        return clip_output(
+            f"Sync failed: {result.stderr}\nOutput: {result.stdout}",
+            max_tokens=2000,
+            label="sync_code",
+        )
+    return clip_output(f"Sync successful:\n{result.stdout}", max_tokens=2000, label="sync_code")
 
 
 @mcp.tool()
@@ -248,8 +262,7 @@ def colcon_build(ip: str, workspace_path: str, packages: str = "") -> str:
     quoted_workspace = shlex.quote(workspace_path)
     package_list = [shlex.quote(package) for package in packages.split()] if packages else []
     pkg_arg = f"--packages-select {' '.join(package_list)}" if package_list else ""
-    command = f"{ros_setup_command()}cd {quoted_workspace} && colcon build {pkg_arg}"
-    return run_ssh_command(ip, command)
+    return run_ssh_command(ip, command, max_tokens=3000, label="colcon_build")
 
 
 def main():
