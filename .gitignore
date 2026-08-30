@@ -2,3 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Build output. `uvx --from .` builds from pyproject.toml + src/, never from
+# these, and a tracked build/ goes stale the moment src/ changes.
+build/
+*.egg-info/

@@ -5,7 +5,9 @@ description = "MCP server for interacting with the Jetson robot."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "mcp",
+    # Pin to the 1.x SDK: mcp 2.0 removed `mcp.server.fastmcp` entirely.
+    # Unpinned, `uvx --from .` re-resolves to 2.x and the server dies on import.
+    "mcp>=1.2,<2",
 ]
 
 [project.scripts]
