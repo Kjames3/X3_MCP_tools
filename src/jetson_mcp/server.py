@@ -748,6 +748,11 @@ def restart_and_wait(
 
     With no ``ready_pattern`` it just restarts and reports whether the unit
     went active.
+
+    ``timeout_s`` bounds the restart and the wait separately rather than the
+    total, so worst-case wall time is longer than ``timeout_s`` -- notably for
+    Type=oneshot units, where ``systemctl restart`` itself blocks until
+    ExecStart finishes.
     """
     quoted_service = shlex.quote(service)
     deadline = max(10, int(timeout_s) - 20)
@@ -769,7 +774,10 @@ found=timeout
 while [ $(( $(date +%s) - start )) -lt {deadline} ]; do
   if journalctl -u {quoted_service} --since "-{window}s" --no-pager 2>/dev/null \
        | grep -qE {shlex.quote(ready_pattern)}; then found=ready; break; fi
-  if ! systemctl is-active --quiet {quoted_service}; then found=unit-died; break; fi
+  st=$(systemctl is-active {quoted_service} 2>/dev/null)
+  # `is-active` is non-zero for "activating" too, so only bail out on states a
+  # unit cannot recover from -- otherwise a slow starter looks like a crash.
+  case "$st" in active|activating|reloading) ;; *) found="unit-$st"; break;; esac
   sleep 2
 done
 echo "result=$found after $(( $(date +%s) - start ))s"
