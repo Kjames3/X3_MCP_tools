@@ -9,7 +9,7 @@ reasonable to hand back to an LLM in one tool_result. This module gives
 you a single choke point to clip that text before it goes back to Claude.
 
 Usage:
-    from token_budget import clip_output
+    from jetson_mcp.token_budget import clip_output
 
     return clip_output(result.stdout, max_tokens=2000, label="pip list")
 
